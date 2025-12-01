@@ -9,54 +9,55 @@ public class DatabaseConfig {
     private static String DB_URL;
     private static String DB_USER;
     private static String DB_PASSWORD;
-    
-    // Bandera para saber si ya se inicializó
     private static boolean isInitialized = false; 
-    
+
     public static void initialize() {
-        if (isInitialized) return; // Evitar reinicializar si ya está listo
+        if (isInitialized) return;
+
+        // 1. Cargar .env
+        // QUITAMOS .filename() para evitar el error. Por defecto busca ".env"
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+
+        // 2. Obtener variables
+        String host = dotenv.get("DB_HOST");
+        String port = dotenv.get("DB_PORT");
+        String name = dotenv.get("DB_NAME");
+        String user = dotenv.get("DB_USER");
+        // CORREGIDO: Usamos DB_PASS que es como se llama en tu archivo
+        String pass = dotenv.get("DB_PASS"); 
+
+        // 3. LOGICA DE RESPALDO (PLAN B)
+        // Si host es null, significa que no leyó el archivo .env, así que usamos los datos directos.
+        if (host == null) {
+            System.out.println("⚠️ ADVERTENCIA: No se leyó el .env. Usando credenciales de respaldo.");
+            host = "54.88.20.156";  
+            port = "3306";
+            name = "ecommerce_miel";
+            user = "fernando";      
+            pass = "fer123";        
+        } else {
+            System.out.println("✅ Archivo .env detectado correctamente.");
+        }
+
+        DB_USER = user;
+        DB_PASSWORD = pass;
+
+        // 4. Construir URL
+        DB_URL = "jdbc:mysql://" + host + ":" + port + "/" + name
+                + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+
+        System.out.println("🔌 URL Final: " + DB_URL); // Debug
 
         try {
-            // Cargar .env (ignorar si falta el archivo para usar valores por defecto)
-            Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-            
-            // Obtener variables con lógica manual de "valor por defecto"
-            String hostEnv = dotenv.get("DB_HOST");
-            String host = (hostEnv != null) ? hostEnv : "localhost";
-
-            String portEnv = dotenv.get("DB_PORT");
-            String port = (portEnv != null) ? portEnv : "3306";
-
-            String dbNameEnv = dotenv.get("DB_NAME");
-            String database = (dbNameEnv != null) ? dbNameEnv : "ecommerce_miel";
-            
-            String userEnv = dotenv.get("DB_USER");
-            DB_USER = (userEnv != null) ? userEnv : "root";
-
-            String passEnv = dotenv.get("DB_PASSWORD");
-            DB_PASSWORD = (passEnv != null) ? passEnv : "";
-            
-            // Construir URL
-            DB_URL = "jdbc:mysql://" + host + ":" + port + "/" + database 
-                   + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
-            
-            // Cargar driver
             Class.forName("com.mysql.cj.jdbc.Driver");
-            
             isInitialized = true;
-            System.out.println("✅ Configuración de base de datos inicializada");
-            System.out.println("🔗 URL: " + DB_URL); // Útil para depurar (quitar en producción)
-            
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Error al cargar el driver de MySQL", e);
+            throw new RuntimeException("Error driver MySQL", e);
         }
     }
     
     public static Connection getConnection() throws SQLException {
-        // Aseguramos que se haya ejecutado initialize() antes de pedir una conexión
-        if (!isInitialized) {
-            initialize();
-        }
+        if (!isInitialized) initialize();
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
 }

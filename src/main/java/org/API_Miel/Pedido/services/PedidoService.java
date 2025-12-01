@@ -62,7 +62,7 @@ public class PedidoService {
             detalle.setCantidad(item.getCantidad());
             detalle.setPrecioUnitario(producto.getPrecio());
             detalle.setSubtotal(itemSubtotal);
-            
+
             detallesParaGuardar.add(detalle);
         }
 
@@ -85,7 +85,7 @@ public class PedidoService {
         for (PedidoDetalle detalle : detallesParaGuardar) {
             detalle.setPedidoId(savedPedido.getId());
             pedidoRepository.saveDetalle(detalle);
-            
+
             Producto p = productoRepository.findById(detalle.getProductoId()).get();
             productoRepository.updateStock(p.getId(), p.getStock() - detalle.getCantidad());
         }
@@ -123,13 +123,14 @@ public class PedidoService {
         List<String> estadosValidos = List.of("pendiente", "procesando", "enviado", "entregado", "cancelado");
         if (!estadosValidos.contains(estado)) {
             throw new RuntimeException("Estado inválido");
-        }
+             }
         pedidoRepository.updateEstado(id, estado);
     }
 
     private PedidoResponse buildPedidoResponse(Pedido pedido) {
         PedidoResponse response = new PedidoResponse();
         response.setId(pedido.getId());
+        response.setUsuarioId(pedido.getUsuarioId());
         response.setNumeroPedido(pedido.getNumeroPedido());
         response.setSubtotal(pedido.getSubtotal());
         response.setCostoEnvio(pedido.getCostoEnvio());

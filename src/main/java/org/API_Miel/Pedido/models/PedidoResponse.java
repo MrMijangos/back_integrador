@@ -6,6 +6,7 @@ import java.util.List;
 
 public class PedidoResponse {
     private Long id;
+    private Long usuarioId;
     private String numeroPedido;
     private BigDecimal subtotal;
     private BigDecimal costoEnvio;
@@ -20,6 +21,9 @@ public class PedidoResponse {
     public PedidoResponse() {}
 
     // Getters y Setters
+    public Long getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
