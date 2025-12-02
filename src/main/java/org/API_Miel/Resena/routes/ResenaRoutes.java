@@ -11,7 +11,13 @@ public class ResenaRoutes {
     }
 
     public void registerRoutes(Javalin app) {
+        // Crear reseña
         app.post("/api/resenas", controller::crear);
+        
+        // Listar reseñas de un producto
         app.get("/api/productos/{productoId}/resenas", controller::listarPorProducto);
+        
+        // Eliminar reseña por ID
+        app.delete("/api/resenas/{resenaId}", controller::eliminar);
     }
 }

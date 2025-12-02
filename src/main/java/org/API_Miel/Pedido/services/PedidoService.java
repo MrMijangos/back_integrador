@@ -32,7 +32,6 @@ public class PedidoService {
         var carrito = carritoRepository.findByUsuarioId(usuarioId)
             .orElseThrow(() -> new RuntimeException("No hay carrito activo"));
 
-        // CORRECCIÓN: Ahora recibimos una lista de DTOs
         List<CarritoDetalleDTO> itemsCarrito = carritoRepository.findDetallesByCarritoId(carrito.getId());
 
         if (itemsCarrito.isEmpty()) {
@@ -43,9 +42,7 @@ public class PedidoService {
         BigDecimal subtotal = BigDecimal.ZERO;
         List<PedidoDetalle> detallesParaGuardar = new ArrayList<>();
 
-        // Iteramos sobre los DTOs
         for (CarritoDetalleDTO item : itemsCarrito) {
-            // Asegúrate de que tu DTO tenga getProductoId() y getCantidad()
             Producto producto = productoRepository.findById(item.getProductoId())
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + item.getProductoId()));
 
@@ -90,13 +87,11 @@ public class PedidoService {
             productoRepository.updateStock(p.getId(), p.getStock() - detalle.getCantidad());
         }
 
-        // 6. Limpiar Carrito (Ahora el método existe)
+        // 6. Limpiar Carrito
         carritoRepository.clearCarrito(carrito.getId());
 
         return buildPedidoResponse(savedPedido);
     }
-    
-    // ... (El resto de métodos getById, getByUsuarioId, getAll se mantienen igual) ...
 
     public PedidoResponse getById(Long id) {
         Pedido pedido = pedidoRepository.findById(id)
@@ -123,8 +118,84 @@ public class PedidoService {
         List<String> estadosValidos = List.of("pendiente", "procesando", "enviado", "entregado", "cancelado");
         if (!estadosValidos.contains(estado)) {
             throw new RuntimeException("Estado inválido");
-             }
+        }
         pedidoRepository.updateEstado(id, estado);
+    }
+
+    /**
+     * Cancela un pedido y restaura el stock de los productos
+     * Solo se pueden cancelar pedidos en estado 'pendiente' o 'procesando'
+     */
+    public PedidoResponse cancelarPedido(Long pedidoId, Long usuarioId) {
+        // 1. Buscar el pedido
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+            .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        // 2. Validar que el pedido pertenece al usuario
+        if (!pedido.getUsuarioId().equals(usuarioId)) {
+            throw new RuntimeException("No tienes permiso para cancelar este pedido");
+        }
+
+        // 3. Validar que el pedido se puede cancelar
+        if (pedido.getEstado().equals("cancelado")) {
+            throw new RuntimeException("El pedido ya está cancelado");
+        }
+
+        if (pedido.getEstado().equals("entregado")) {
+            throw new RuntimeException("No se puede cancelar un pedido ya entregado");
+        }
+
+        if (pedido.getEstado().equals("enviado")) {
+            throw new RuntimeException("No se puede cancelar un pedido en tránsito. Contacta a soporte");
+        }
+
+        // 4. Obtener los detalles del pedido
+        List<PedidoDetalle> detalles = pedidoRepository.findDetallesByPedidoId(pedidoId);
+
+        // 5. Restaurar el stock de cada producto
+        for (PedidoDetalle detalle : detalles) {
+            Producto producto = productoRepository.findById(detalle.getProductoId())
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalle.getProductoId()));
+            
+            // Devolver la cantidad al stock
+            int nuevoStock = producto.getStock() + detalle.getCantidad();
+            productoRepository.updateStock(producto.getId(), nuevoStock);
+        }
+
+        // 6. Actualizar el estado del pedido a 'cancelado'
+        pedidoRepository.updateEstado(pedidoId, "cancelado");
+
+        // 7. Retornar el pedido actualizado
+        return getById(pedidoId);
+    }
+
+    /**
+     * Versión para administradores que pueden cancelar cualquier pedido
+     */
+    public PedidoResponse cancelarPedidoAdmin(Long pedidoId) {
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+            .orElseThrow(() -> new RuntimeException("Pedido no encontrado"));
+
+        if (pedido.getEstado().equals("cancelado")) {
+            throw new RuntimeException("El pedido ya está cancelado");
+        }
+
+        if (pedido.getEstado().equals("entregado")) {
+            throw new RuntimeException("No se puede cancelar un pedido ya entregado");
+        }
+
+        // Restaurar stock
+        List<PedidoDetalle> detalles = pedidoRepository.findDetallesByPedidoId(pedidoId);
+        for (PedidoDetalle detalle : detalles) {
+            Producto producto = productoRepository.findById(detalle.getProductoId())
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + detalle.getProductoId()));
+            
+            int nuevoStock = producto.getStock() + detalle.getCantidad();
+            productoRepository.updateStock(producto.getId(), nuevoStock);
+        }
+
+        pedidoRepository.updateEstado(pedidoId, "cancelado");
+        return getById(pedidoId);
     }
 
     private PedidoResponse buildPedidoResponse(Pedido pedido) {

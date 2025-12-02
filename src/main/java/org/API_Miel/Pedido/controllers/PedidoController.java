@@ -41,7 +41,7 @@ public class PedidoController {
 
             ctx.status(HttpStatus.CREATED).json(result);
         } catch (Exception e) {
-            e.printStackTrace(); // Útil para depurar en consola
+            e.printStackTrace();
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("message", e.getMessage());
@@ -104,6 +104,59 @@ public class PedidoController {
             ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("success", false, "message", e.getMessage()));
         } catch (Exception e) {
             ctx.status(HttpStatus.INTERNAL_SERVER_ERROR).json(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Cancela un pedido del usuario autenticado
+     * Solo puede cancelar sus propios pedidos
+     */
+    public void cancelarPedido(Context ctx) {
+        try {
+            Long pedidoId = Long.parseLong(ctx.pathParam("id"));
+            Long usuarioId = Long.parseLong(ctx.pathParam("usuarioId"));
+
+            var pedido = pedidoService.cancelarPedido(pedidoId, usuarioId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("data", pedido);
+            result.put("message", "Pedido cancelado exitosamente. El stock ha sido restaurado.");
+
+            ctx.status(HttpStatus.OK).json(result);
+        } catch (NumberFormatException e) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("success", false, "message", "ID inválido"));
+        } catch (RuntimeException e) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(HttpStatus.INTERNAL_SERVER_ERROR).json(Map.of("success", false, "message", "Error al cancelar el pedido"));
+        }
+    }
+
+    /**
+     * Cancela cualquier pedido (solo para administradores)
+     * Nota: Deberías agregar middleware de autenticación y verificación de roles
+     */
+    public void cancelarPedidoAdmin(Context ctx) {
+        try {
+            Long pedidoId = Long.parseLong(ctx.pathParam("id"));
+
+            var pedido = pedidoService.cancelarPedidoAdmin(pedidoId);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("data", pedido);
+            result.put("message", "Pedido cancelado por administrador. Stock restaurado.");
+
+            ctx.status(HttpStatus.OK).json(result);
+        } catch (NumberFormatException e) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("success", false, "message", "ID inválido"));
+        } catch (RuntimeException e) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("success", false, "message", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(HttpStatus.INTERNAL_SERVER_ERROR).json(Map.of("success", false, "message", "Error al cancelar el pedido"));
         }
     }
 }

@@ -40,7 +40,41 @@ public class ResenaRepository {
         return lista;
     }
 
-    // Mapeo auxiliar
+    public Resena buscarPorId(Long resenaId) throws SQLException {
+        String sql = "SELECT * FROM resena WHERE id = ?";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setLong(1, resenaId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapResultSet(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public void eliminar(Long resenaId) throws SQLException {
+        // Opción 1: Eliminación lógica (recomendada - marca como inactiva)
+        String sql = "UPDATE resena SET activa = FALSE WHERE id = ?";
+        
+        // Opción 2: Eliminación física (descomentar si prefieres borrar completamente)
+        // String sql = "DELETE FROM resena WHERE id = ?";
+        
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            
+            stmt.setLong(1, resenaId);
+            int rowsAffected = stmt.executeUpdate();
+            
+            if (rowsAffected == 0) {
+                throw new SQLException("No se encontró la reseña con ID: " + resenaId);
+            }
+        }
+    }
+
     private Resena mapResultSet(ResultSet rs) throws SQLException {
         return new Resena(
             rs.getLong("id"),
